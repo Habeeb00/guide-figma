@@ -3,6 +3,7 @@ figma.showUI(__html__, { width: 300, height: 540 });
 
 let lastGuidesData = null;
 let copiedGuides = null;
+let guidesVisibility = new Map(); // Track visibility state by frame ID
 
 function getGuidesFromFrame(frame) {
   if (!frame || frame.type !== "FRAME") {
@@ -23,6 +24,7 @@ function getGuidesFromFrame(frame) {
     frameName: frame.name,
     guidesCount: guides.length,
     guides: guides,
+    guidesVisible: guidesVisibility.get(frame.id) !== false // default to visible
   };
 }
 
@@ -177,6 +179,25 @@ figma.ui.onmessage = (msg) => {
         type: "paste-status",
         data: { message: "No guides to paste. Copy guides first." },
       });
+    }
+  }
+  
+  if (msg.type === "toggle-guides") {
+    const selection = figma.currentPage.selection;
+    if (selection.length > 0 && selection[0].type === "FRAME") {
+      const frame = selection[0];
+      const frameId = frame.id;
+      const currentVisibility = guidesVisibility.get(frameId) !== false;
+      
+      // Toggle visibility state
+      guidesVisibility.set(frameId, !currentVisibility);
+      
+      figma.ui.postMessage({
+        type: "paste-status",
+        data: { message: currentVisibility ? "Guides hidden in UI" : "Guides shown in UI" }
+      });
+      
+      checkSelection();
     }
   }
 };
