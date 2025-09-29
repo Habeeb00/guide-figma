@@ -4,6 +4,7 @@ figma.showUI(__html__, { width: 300, height: 540 });
 let lastGuidesData = null;
 let copiedGuides = null;
 let guidesVisibility = new Map(); // Track visibility state by frame ID
+let presets = {}; // Store saved presets
 
 function getGuidesFromFrame(frame) {
   if (!frame || frame.type !== "FRAME") {
@@ -24,7 +25,7 @@ function getGuidesFromFrame(frame) {
     frameName: frame.name,
     guidesCount: guides.length,
     guides: guides,
-    guidesVisible: guidesVisibility.get(frame.id) !== false // default to visible
+    guidesVisible: guidesVisibility.get(frame.id) !== false, // default to visible
   };
 }
 
@@ -181,29 +182,104 @@ figma.ui.onmessage = (msg) => {
       });
     }
   }
-  
+
   if (msg.type === "toggle-guides") {
     const selection = figma.currentPage.selection;
     if (selection.length > 0 && selection[0].type === "FRAME") {
       const frame = selection[0];
       const frameId = frame.id;
       const currentVisibility = guidesVisibility.get(frameId) !== false;
-      
+
       // Toggle visibility state
       guidesVisibility.set(frameId, !currentVisibility);
-      
+
       figma.ui.postMessage({
         type: "paste-status",
-        data: { message: currentVisibility ? "Guides hidden in UI" : "Guides shown in UI" }
+        data: {
+          message: currentVisibility
+            ? "Guides hidden in UI"
+            : "Guides shown in UI",
+        },
       });
-      
+
       checkSelection();
     }
+  }
+
+  if (msg.type === "save-preset") {
+    const selection = figma.currentPage.selection;
+    if (selection.length > 0 && selection[0].type === "FRAME") {
+      const frame = selection[0];
+      const guides = frame.guides.map((guide) => ({
+        axis: guide.axis,
+        offset: guide.offset,
+      }));
+
+      presets[msg.presetName] = guides;
+
+      figma.ui.postMessage({
+        type: "paste-status",
+        data: { message: `Preset "${msg.presetName}" saved` },
+      });
+
+      // Send updated presets list
+      figma.ui.postMessage({
+        type: "presets-update",
+        data: { presets: presets },
+      });
+    }
+  }
+
+  if (msg.type === "apply-preset") {
+    const selection = figma.currentPage.selection;
+    if (
+      selection.length > 0 &&
+      selection[0].type === "FRAME" &&
+      presets[msg.presetName]
+    ) {
+      const frame = selection[0];
+      const presetGuides = presets[msg.presetName];
+      const currentGuides = [...frame.guides];
+
+      // Add preset guides to current guides
+      presetGuides.forEach((guide) => {
+        currentGuides.push({ axis: guide.axis, offset: guide.offset });
+      });
+
+      frame.guides = currentGuides;
+      checkSelection();
+
+      figma.ui.postMessage({
+        type: "paste-status",
+        data: { message: `Applied preset "${msg.presetName}"` },
+      });
+    }
+  }
+
+  if (msg.type === "delete-preset") {
+    delete presets[msg.presetName];
+
+    figma.ui.postMessage({
+      type: "paste-status",
+      data: { message: `Preset "${msg.presetName}" deleted` },
+    });
+
+    // Send updated presets list
+    figma.ui.postMessage({
+      type: "presets-update",
+      data: { presets: presets },
+    });
   }
 };
 
 // Check for guide changes every 100ms
 setInterval(checkSelection, 100);
+
+// Send initial presets list to UI
+figma.ui.postMessage({
+  type: "presets-update",
+  data: { presets: presets },
+});
 
 // Initial check
 checkSelection();

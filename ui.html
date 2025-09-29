@@ -148,6 +148,67 @@
         margin-right: 4px;
         font-size: 12px;
       }
+      .preset-section {
+        background: #fff3cd;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        border: 1px solid #ffeaa7;
+      }
+      .preset-form {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .preset-input {
+        flex: 1;
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        font-size: 11px;
+      }
+      .save-preset-btn {
+        background: #fd7e14;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .preset-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 4px 0;
+        padding: 4px 8px;
+        background: white;
+        border-radius: 3px;
+        border: 1px solid #ddd;
+      }
+      .preset-name {
+        font-weight: 600;
+        color: #856404;
+      }
+      .apply-preset-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 2px 6px;
+        cursor: pointer;
+        font-size: 10px;
+        margin-right: 4px;
+      }
+      .delete-preset-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 2px 6px;
+        cursor: pointer;
+        font-size: 10px;
+      }
     </style>
   </head>
   <body>
@@ -165,6 +226,21 @@
     </div>
 
     <div id="results">Select a frame...</div>
+
+    <div class="preset-section">
+      <div class="preset-form">
+        <input
+          type="text"
+          id="presetName"
+          class="preset-input"
+          placeholder="Enter preset name..."
+        />
+        <button class="save-preset-btn" onclick="savePreset()">
+          Save Preset
+        </button>
+      </div>
+      <div id="presetList"></div>
+    </div>
 
     <div id="copyDialog" class="copy-dialog">
       <div style="margin-bottom: 12px; font-weight: 600">Copy Guides</div>
@@ -226,6 +302,10 @@
           document.body.appendChild(statusDiv);
           setTimeout(() => document.body.removeChild(statusDiv), 2000);
         }
+
+        if (e.data.pluginMessage.type === "presets-update") {
+          updatePresetList(e.data.pluginMessage.data.presets);
+        }
       };
 
       function deleteGuide(index) {
@@ -282,6 +362,64 @@
 
       function toggleGuides() {
         parent.postMessage({ pluginMessage: { type: "toggle-guides" } }, "*");
+      }
+
+      function savePreset() {
+        const presetName = document.getElementById("presetName").value.trim();
+        if (!presetName) {
+          alert("Please enter a preset name");
+          return;
+        }
+        parent.postMessage(
+          {
+            pluginMessage: { type: "save-preset", presetName: presetName },
+          },
+          "*"
+        );
+        document.getElementById("presetName").value = "";
+      }
+
+      function applyPreset(presetName) {
+        parent.postMessage(
+          {
+            pluginMessage: { type: "apply-preset", presetName: presetName },
+          },
+          "*"
+        );
+      }
+
+      function deletePreset(presetName) {
+        if (confirm(`Delete preset "${presetName}"?`)) {
+          parent.postMessage(
+            {
+              pluginMessage: { type: "delete-preset", presetName: presetName },
+            },
+            "*"
+          );
+        }
+      }
+
+      function updatePresetList(presets) {
+        const presetList = document.getElementById("presetList");
+        if (Object.keys(presets).length === 0) {
+          presetList.innerHTML =
+            '<div style="color: #666; font-style: italic;">No presets saved</div>';
+          return;
+        }
+
+        presetList.innerHTML = Object.keys(presets)
+          .map(
+            (name) => `
+          <div class="preset-item">
+            <span class="preset-name">${name}</span>
+            <div>
+              <button class="apply-preset-btn" onclick="applyPreset('${name}')">Apply</button>
+              <button class="delete-preset-btn" onclick="deletePreset('${name}')">×</button>
+            </div>
+          </div>
+        `
+          )
+          .join("");
       }
     </script>
   </body>
