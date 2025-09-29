@@ -1,0 +1,56 @@
+# 📐 Frame Ruler Manager – Figma Plugin
+
+A Figma plugin to manage **rulers inside frames**, making it easier to add, copy, and reuse guides across designs.
+
+---
+
+## 🎯 Goals
+1- Extend Figma’s guide functionality to work at the **frame level**.
+2- Allow designers to **add guides by precise values** (`px` or `%`).
+3- Enable **copy-paste of guides** between frames.
+4- Provide a **clear UI** to manage, show/hide, and delete rulers.
+
+---
+
+## 🛠️ Core Features (MVP)
+- **Add Rulers**
+  - Horizontal / Vertical.
+  - Position via input (`10px`, `25%`).
+  - Stored in frame’s plugin data.
+- **Copy & Paste Rulers**
+  - Copy ruler set from one frame.
+  - Paste to one or many other frames.
+- **Basic UI**
+  - Dropdown for direction.
+  - Input for value.
+  - Buttons: `Add`, `Copy`, `Paste`.
+
+---
+
+## 🚀 Extended Features
+- **Preset Rulers**
+  - Save a set of rulers (e.g., “12-column grid”).
+  - Apply preset to frames later.
+- **Ruler List Panel**
+  - Display all rulers for the selected frame.
+  - Delete individual rulers.
+  - Edit values.
+- **Bulk Paste**
+  - Apply rulers to multiple selected frames at once.
+- **Visibility Toggle**
+  - Show/hide rulers per frame without deleting.
+- **Reset**
+  - Clear all rulers from a frame.
+
+---
+
+## 🖥️ UI Ideas
+- Sidebar with:
+  - **Add Ruler Section**
+    - Direction dropdown
+    - Input field (`px` / `%`)
+    - Add button
+  - **Ruler List Section**
+    - List of rulers with edit/delete
+  - **Actions Section**
+    - Copy / Paste / Reset / Presets

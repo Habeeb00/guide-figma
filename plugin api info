@@ -1,0 +1,138 @@
+// FrameRulerManager.js
+
+/**
+ * Frame Ruler Manager Plugin - Figma
+ * Manages guides (rulers) inside frames: add, copy, paste, delete, and presets.
+ */
+
+// -------------------------
+// Core Guide Functions
+// -------------------------
+
+/** Fetch all guides from a frame */
+function getGuides(frame) {
+  if (!('guides' in frame)) throw new Error('Node does not support guides');
+  return frame.guides;
+}
+
+/** Add a guide to a frame */
+function addGuide(frame, axis, offset) {
+  frame.addGuide({ axis, offset });
+  saveFrameRulers(frame);
+}
+
+/** Remove a guide by index from a frame */
+function removeGuide(frame, index) {
+  const guides = getGuides(frame);
+  if (index < 0 || index >= guides.length) throw new Error('Invalid guide index');
+  guides[index].remove();
+  saveFrameRulers(frame);
+}
+
+/** Move a guide to a new offset */
+function moveGuide(frame, index, newOffset) {
+  const guides = getGuides(frame);
+  const guide = guides[index];
+  const axis = guide.axis;
+  guide.remove();
+  frame.addGuide({ axis, offset: newOffset });
+  saveFrameRulers(frame);
+}
+
+// -------------------------
+// Plugin Data / Presets
+// -------------------------
+
+/** Save frame guides to plugin data */
+function saveFrameRulers(frame) {
+  const guides = frame.guides.map(g => ({ axis: g.axis, offset: g.offset }));
+  frame.setPluginData('rulers', JSON.stringify(guides));
+}
+
+/** Load frame guides from plugin data */
+function loadFrameRulers(frame) {
+  const data = frame.getPluginData('rulers');
+  return data ? JSON.parse(data) : [];
+}
+
+/** Save preset globally */
+async function savePreset(name, guides) {
+  const presets = JSON.parse(await figma.clientStorage.getAsync('rulerPresets') || '{}');
+  presets[name] = guides;
+  await figma.clientStorage.setAsync('rulerPresets', JSON.stringify(presets));
+}
+
+/** Load preset globally */
+async function loadPreset(name) {
+  const presets = JSON.parse(await figma.clientStorage.getAsync('rulerPresets') || '{}');
+  return presets[name] || [];
+}
+
+// -------------------------
+// Copy / Paste Guides
+// -------------------------
+
+/** Copy guides from a frame to client storage */
+async function copyGuides(frame) {
+  const guides = frame.guides.map(g => ({ axis: g.axis, offset: g.offset }));
+  await figma.clientStorage.setAsync('copiedGuides', JSON.stringify(guides));
+}
+
+/** Paste guides to one or multiple frames */
+async function pasteGuides(frames) {
+  const data = await figma.clientStorage.getAsync('copiedGuides');
+  if (!data) return;
+  const guides = JSON.parse(data);
+  frames.forEach(frame => {
+    guides.forEach(g => frame.addGuide({ axis: g.axis, offset: g.offset }));
+    saveFrameRulers(frame);
+  });
+}
+
+// -------------------------
+// Bulk / Selection Actions
+// -------------------------
+
+/** Apply preset to selected frames */
+async function applyPresetToSelection(presetName) {
+  const guides = await loadPreset(presetName);
+  figma.currentPage.selection.forEach(frame => {
+    if (frame.type === 'FRAME') {
+      guides.forEach(g => frame.addGuide({ axis: g.axis, offset: g.offset }));
+      saveFrameRulers(frame);
+    }
+  });
+}
+
+/** Reset guides for a frame */
+function resetFrame(frame) {
+  const guides = frame.guides;
+  guides.forEach(g => g.remove());
+  saveFrameRulers(frame);
+}
+
+// -------------------------
+// Example Usage (Plugin)
+// -------------------------
+
+if (figma.currentPage.selection.length > 0) {
+  const frame = figma.currentPage.selection[0];
+
+  // Add guides
+  addGuide(frame, 'X', 50);
+  addGuide(frame, 'Y', 100);
+
+  // Copy / Paste example
+  copyGuides(frame).then(() => pasteGuides([frame]));
+
+  // Move / Delete guides
+  moveGuide(frame, 0, 75);
+  removeGuide(frame, 1);
+
+  // Save / Load preset
+  savePreset('MyGrid', frame.guides.map(g => ({ axis: g.axis, offset: g.offset })));
+  applyPresetToSelection('MyGrid');
+
+  // Reset frame guides
+  resetFrame(frame);
+}
