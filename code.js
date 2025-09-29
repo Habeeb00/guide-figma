@@ -1,10 +1,31 @@
 // Basic Figma plugin to automatically fetch guides from frames
-figma.showUI(__html__, { width: 300, height: 540 });
+figma.showUI(__html__, { width: 280, height: 510});
 
 let lastGuidesData = null;
 let copiedGuides = null;
 let guidesVisibility = new Map(); // Track visibility state by frame ID
 let presets = {}; // Store saved presets
+
+// Load presets from storage on startup
+async function loadPresets() {
+  try {
+    const savedPresets = await figma.clientStorage.getAsync("guidePresets");
+    if (savedPresets) {
+      presets = savedPresets;
+    }
+  } catch (error) {
+    console.log("Error loading presets:", error);
+  }
+}
+
+// Save presets to storage
+async function savePresetsToStorage() {
+  try {
+    await figma.clientStorage.setAsync("guidePresets", presets);
+  } catch (error) {
+    console.log("Error saving presets:", error);
+  }
+}
 
 function getGuidesFromFrame(frame) {
   if (!frame || frame.type !== "FRAME") {
@@ -70,7 +91,7 @@ function deleteGuide(frame, index) {
 figma.on("selectionchange", checkSelection);
 
 // Handle UI messages
-figma.ui.onmessage = (msg) => {
+figma.ui.onmessage = async (msg) => {
   if (msg.type === "delete-guide") {
     const selection = figma.currentPage.selection;
     if (selection.length > 0 && selection[0].type === "FRAME") {
@@ -217,6 +238,9 @@ figma.ui.onmessage = (msg) => {
 
       presets[msg.presetName] = guides;
 
+      // Save to persistent storage
+      await savePresetsToStorage();
+
       figma.ui.postMessage({
         type: "paste-status",
         data: { message: `Preset "${msg.presetName}" saved` },
@@ -259,6 +283,9 @@ figma.ui.onmessage = (msg) => {
   if (msg.type === "delete-preset") {
     delete presets[msg.presetName];
 
+    // Save to persistent storage
+    await savePresetsToStorage();
+
     figma.ui.postMessage({
       type: "paste-status",
       data: { message: `Preset "${msg.presetName}" deleted` },
@@ -275,11 +302,20 @@ figma.ui.onmessage = (msg) => {
 // Check for guide changes every 100ms
 setInterval(checkSelection, 100);
 
-// Send initial presets list to UI
-figma.ui.postMessage({
-  type: "presets-update",
-  data: { presets: presets },
-});
+// Initialize plugin
+async function initializePlugin() {
+  // Load presets from storage
+  await loadPresets();
 
-// Initial check
-checkSelection();
+  // Send initial presets list to UI
+  figma.ui.postMessage({
+    type: "presets-update",
+    data: { presets: presets },
+  });
+
+  // Initial check
+  checkSelection();
+}
+
+// Start initialization
+initializePlugin();
